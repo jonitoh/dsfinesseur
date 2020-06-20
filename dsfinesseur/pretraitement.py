@@ -1,3 +1,13 @@
+"""Module centré sur le preprocessing d'un jeu de données.
+Bien que basé sur un projet d'analyse de données spécifique (OpenFoodFacts),
+le contenu a pour vocation d'être générique."""
+import math
+import time
+
+import numpy as np
+import pandas as pd
+
+
 def encoding():
 
     from sklearn.preprocessing import LabelEncoder, LabelBinarizer, OneHotEncoder
@@ -94,14 +104,8 @@ def calculer_train_test_split(y, train_rate=.70, valid_rate=None, classes=None):
 
 
     # coding: utf-8
-"""Module centré sur le preprocessing d'un jeu de données.
-Bien que basé sur un projet d'analyse de données spécifique (OpenFoodFacts),
-le contenu a pour vocation d'être générique."""
-import math
-import time
 
-import numpy as np
-import pandas as pd
+
 
 
 def eliminer_colonne_vide(tableau, taux_de_vide_minimum=0.50, retourner_details=True, chemin_fichier='barh_classement_colonnes_vides.png'):
