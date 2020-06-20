@@ -13,6 +13,7 @@ from numpy import datetime64
 import numpy as np
 import pandas as pd
 
+from other import *
 
 def calculer_covariance(variable_1, variable_2):
     """Calcul de la covariance empirique entre deux variables quantitatives.

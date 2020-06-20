@@ -37,3 +37,30 @@ import numpy as np
 #             converted = np.array(data)
 #         elif isinstance(data, pd.DataFrame):
 #             converted = data.as_matrix()
+
+
+
+def sigmoide(x, valeur_sup=1.0, valeur_inf=.0, pente=1):
+    """Personnalisable sigmoide.
+
+    Arguments d'entrées:
+        x (float)
+        valeur_sup, valeur_inf, pente (float): paramètres
+    
+    Arguments de sorties:
+        (float)
+    """
+    return valeur_inf + ( valeur_sup - valeur_inf ) / ( 1 + math.exp(- pente * x) )
+
+
+def inverse_sigmoide(x, valeur_sup=1.0, valeur_inf=.0, pente=1):
+    """Personnalisable inverse sigmoide.
+
+    Arguments d'entrées:
+        x (float)
+        valeur_sup, valeur_inf, pente (float): paramètres
+    
+    Arguments de sorties:
+        (float)
+    """
+    return math.log( ( x - valeur_inf ) / ( valeur_sup - valeur_inf) ) / pente
