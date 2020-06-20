@@ -8,74 +8,24 @@ import numpy as np
 import pandas as pd
 
 
-def encoding():
-
-    from sklearn.preprocessing import LabelEncoder, LabelBinarizer, OneHotEncoder
-
-    preprocessed_thoracic_data = thoracic_data.copy()
-    encodeurs = None
-
-    for _,serie in encoding_all.iterrows():
-        print("feature ", serie.features)
-        args = None
-        if serie.type == 'ordered category':
-            args = serie.value.split("<")
-            args = dict(zip(args, range(minimum_value, minimum_value + len(args))))
-        else:
-            args = serie.value.split(",")
-        encoder_args[ serie.features ] = args
-
-    #def preparer_data(data, binary_features, not_binary_features, numerical_features, encodeurs=None):
-    if encodeurs is None:
-        encodeurs = dict()
-
-    for feature, arg in encoder_args.items():
-        if isinstance(arg, list):
-            arg = np.array(arg).reshape(-1, 1)
-            encodeur = LabelEncoder() if feature != target else LabelBinarizer()
-            encodeur = encodeur.fit(arg)
-            encodeurs[ feature ] = encodeur
-            preprocessed_thoracic_data[ feature ] = encodeur.transform(preprocessed_thoracic_data[ feature ])    
-
-            if len(arg) == 2:#binary
-                encodeur = LabelEncoder().fit(arg)
-                encodeurs[ feature ] = encodeur
-                preprocessed_thoracic_data[ feature ] = encodeur.transform(preprocessed_thoracic_data[ feature ])    
-
-            else:#unordered category
-                encodeur = OneHotEncoder().fit(arg)
-                encodeurs[ feature ] = encodeur
-                encoded_features = [ category + '_' + category for category in encodeur.categories_[0] ]
-                
-                encoded_data = encodeur.transform(preprocessed_thoracic_data[ feature ].values.reshape(-1, 1)).toarray()
-                encoded_data = pd.DataFrame(encoded_data, columns=encoded_features)
-                # Etape de reset index nécessaire avant concaténation (pb très couteux en temps)            
-                preprocessed_thoracic_data = (
-                    pd
-                    .concat([preprocessed_thoracic_data.reset_index(drop=True),
-                            encoded_data.reset_index(drop=True)],
-                            axis=1,
-                            join='outer'
-                        )
-                    .drop(columns=feature)
-                )
-
+def est_une_valeur_manquante(variable, liste_personnalisee=None):
+    """ Pour savoir si une variable est NaN, il y a la fonction np.nan.
+    Toutefois, elle ne fonctionne que sur des valeurs numériques.
+    Cette fonction s'utilise sur tout type de fonction.
         
-        elif isinstance(arg, dict):#ordered category
-            preprocessed_thoracic_data[ feature ] = preprocessed_thoracic_data[ feature ].apply(arg)
-            encodeurs[ feature ] = arg
-            
-        else:
-            print(f"Oups! it should not happend! Why {feature} is not encoded.")
+    Arguments d'entrées:
+        variable (Python Object)
+        
+    Arguments de sorties:
+        (bool)
+    """
+    if liste_personnalisee is None:
+        liste_personnalisee = []
+    return (variable in liste_personnalisee) or (bool(variable) and variable != 0) or (variable != variable)
 
 
 def calculer_train_test_split(y, train_rate=.70, valid_rate=None, classes=None):
     """ 
-        length:
-        train_rate:
-        classes (list):
-
-    
     """
     length = len(y)
     if valid_rate is None:
@@ -94,32 +44,27 @@ def calculer_train_test_split(y, train_rate=.70, valid_rate=None, classes=None):
     
     if len(classes) != len(set(y)):
         raise Error("len(classes) != len(set(y))")
-    res = np.array(['unknown'] * length)
+
+    indexes = np.array(['unknown'] * length)
     for modality in classes:
-        idx = [ i for i in range(length) if y[i] == modality ]
-        modality_res = np.random.choice(split_into, len(idx), p=probas)
-        res[ idx ] = modality_res
-    return res
+        indexes_per_modality = [ i for i in range(length) if y[i] == modality ]
+        indexes[ indexes_per_modality ] = np.random.choice(split_into, len(indexes_per_modality), p=probas)
+    return indexes
 
 
 
     # coding: utf-8
 
 
-
-
-def eliminer_colonne_vide(tableau, taux_de_vide_minimum=0.50, retourner_details=True, chemin_fichier='barh_classement_colonnes_vides.png'):
+def eliminer_colonne_vide(tableau, taux_de_vide_minimum=0.50):
     """Supprimer les colonnes avec un taux de remplissage inférieur à une référence donnée.
     
     Arguments d'entrée:
         tableau (pandas.DataFrame)
         taux_de_vide_minimum (float): au delà de ce taux, la colonne sera considérée vide
-        retourner_details (bool): si True, renvoie le classement des colonnes
-            sur leurs taux de remplissage.
     
     Arguments de sortie:
         tableau_nettoye (pandas.DataFrame)
-        classement (pandas.DataFrame)
     """
     classement = pd.DataFrame()
     classement['colonne'] = list(tableau)
@@ -132,49 +77,19 @@ def eliminer_colonne_vide(tableau, taux_de_vide_minimum=0.50, retourner_details=
     
     colonnes_a_eliminer = classement.loc[classement['taux_de_vide']>=taux_de_vide_minimum, 'colonne']
     tableau_nettoye = tableau.drop(columns=colonnes_a_eliminer)
-
-    if retourner_details:
-        # Initialise plot
-        ax = classement.set_index('colonne').plot(kind='barh', figsize=(8, 10), color='#86bf91', zorder=2, width=0.85)
-
-        # Despine -- remove figure's borders
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
-
-        # Set x-axis
-        ax.set_xlabel("Ratio d'éléments vides", labelpad=20, weight='bold', size=12)
-        # il faudra voir
-
-        # Set y-axis
-        ax.set_ylabel("Colonnes", labelpad=20, weight='bold', size=12)
-
-        # Add a legend
-        ax.legend(ncol=2, loc="upper right")
-
-
-        # Save figure
-        (ax
-        .get_figure()
-        .savefig(chemin_fichier, bbox_inches="tight")
-        )
-
-        return tableau_nettoye, classement
     
     return tableau_nettoye
 
 
-def eliminer_ligne_vide(tableau, taux=None, retourner_details=True):
+def eliminer_ligne_vide(tableau, taux=None):
     """Supprimer les lignes avec un taux de remplissage inférieur à une référence donnée.
     
     Arguments d'entrée:
         tableau (pandas.DataFrame)
         taux (float)
-        retourner_details (bool): si True, renvoie le classement des colonnes
-            sur leurs taux de remplissage.
     
     Arguments de sorties:
         tableau_nettoye (pandas.DataFrame)
-        classement (pandas.DataFrame)
     """
     if not taux:
         taux = 0.50
@@ -183,13 +98,6 @@ def eliminer_ligne_vide(tableau, taux=None, retourner_details=True):
     lignes_a_eliminer = tableau.isna().sum(1)
     tableau_nettoye = tableau[ lignes_a_eliminer>=taux ]
 
-    if retourner_details:
-        pass
-        # (classement
-        # .plot(kind='barh')
-        # .get_figure()
-        # .savefig(chemin_fichier)
-        # )
     return tableau_nettoye
 
 
@@ -276,3 +184,65 @@ def eliminer_doublons(tableau, colonnes_ciblees=None, strategie='première occur
         .agg(methode)
         .reset_index(drop=True)
     )
+
+
+
+# def encoding():
+
+#     from sklearn.preprocessing import LabelEncoder, LabelBinarizer, OneHotEncoder
+
+#     preprocessed_thoracic_data = thoracic_data.copy()
+#     encodeurs = None
+
+#     for _,serie in encoding_all.iterrows():
+#         print("feature ", serie.features)
+#         args = None
+#         if serie.type == 'ordered category':
+#             args = serie.value.split("<")
+#             args = dict(zip(args, range(minimum_value, minimum_value + len(args))))
+#         else:
+#             args = serie.value.split(",")
+#         encoder_args[ serie.features ] = args
+
+#     #def preparer_data(data, binary_features, not_binary_features, numerical_features, encodeurs=None):
+#     if encodeurs is None:
+#         encodeurs = dict()
+
+#     for feature, arg in encoder_args.items():
+#         if isinstance(arg, list):
+#             arg = np.array(arg).reshape(-1, 1)
+#             encodeur = LabelEncoder() if feature != target else LabelBinarizer()
+#             encodeur = encodeur.fit(arg)
+#             encodeurs[ feature ] = encodeur
+#             preprocessed_thoracic_data[ feature ] = encodeur.transform(preprocessed_thoracic_data[ feature ])    
+
+#             if len(arg) == 2:#binary
+#                 encodeur = LabelEncoder().fit(arg)
+#                 encodeurs[ feature ] = encodeur
+#                 preprocessed_thoracic_data[ feature ] = encodeur.transform(preprocessed_thoracic_data[ feature ])    
+
+#             else:#unordered category
+#                 encodeur = OneHotEncoder().fit(arg)
+#                 encodeurs[ feature ] = encodeur
+#                 encoded_features = [ category + '_' + category for category in encodeur.categories_[0] ]
+                
+#                 encoded_data = encodeur.transform(preprocessed_thoracic_data[ feature ].values.reshape(-1, 1)).toarray()
+#                 encoded_data = pd.DataFrame(encoded_data, columns=encoded_features)
+#                 # Etape de reset index nécessaire avant concaténation (pb très couteux en temps)            
+#                 preprocessed_thoracic_data = (
+#                     pd
+#                     .concat([preprocessed_thoracic_data.reset_index(drop=True),
+#                             encoded_data.reset_index(drop=True)],
+#                             axis=1,
+#                             join='outer'
+#                         )
+#                     .drop(columns=feature)
+#                 )
+
+        
+#         elif isinstance(arg, dict):#ordered category
+#             preprocessed_thoracic_data[ feature ] = preprocessed_thoracic_data[ feature ].apply(arg)
+#             encodeurs[ feature ] = arg
+            
+#         else:
+#             print(f"Oups! it should not happend! Why {feature} is not encoded.")
