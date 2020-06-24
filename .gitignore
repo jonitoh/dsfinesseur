@@ -1,5 +1,6 @@
 # Compiled python modules.
 *.pyc
+**/.ipynb_checkpoints
 
 # Setuptools distribution folder.
 /dist/
@@ -9,4 +10,3 @@
 /*.egg
 .vscode
 Pipfile
-dsfinesseur/.ipynb_checkpoints
